@@ -1,0 +1,147 @@
+---
+title: "Assignment 11"
+author: "Scott Stoltzman"
+date: "6/26/2019"
+output: html_document
+---
+
+```{r}
+library('tidyverse')
+library('caret')
+library('modelr')
+library('titanic')
+
+options(na.action = na.warn)
+```
+
+# The Titanic Data
+
+```{r}
+# Load the data
+data("titanic_train") # training
+all_data = titanic_train %>% 
+  as_tibble() %>%
+  mutate(Survived = factor(Survived)) # this is binary yes/no 0/1
+```
+
+## Explain why we have training data separate from testing data:
+
+< Answer Here >
+
+
+## Determine what's worth analyzing
+
+We are going to try and predict `Survived`
+
+```{r}
+head(all_data)
+```
+
+
+
+```{r}
+all_data %>% summary()
+```
+
+
+```{r}
+all_data %>% glimpse()
+```
+
+## What is the following function doing?
+< Answer Here >
+```{r}
+colSums(all_data == '')
+```
+
+
+## How should we handle missing values?
+Looking at `Embarked`
+```{r}
+all_data %>% group_by(Embarked) %>% count()
+```
+
+## For learning purposes impute the following values:
+  - Missing `Embarked` values should be `S`
+  - Missing and `NA` values for `Age` should be replaced by the median `Age` 
+  - `NA` values for `Fare` should be replaced by the mean `Fare` 
+< Answer with code below >
+```{r}
+all_data = all_data %>%
+  mutate() # Add your code within the mutate() 
+all_data %>% summary()
+```
+
+## Prepare data to train a model
+Why should we drop `PassengerId, Ticket, Name, Cabin` from our data?
+< Answer Here>
+< Answer in code below>
+```{r}
+all_data = all_data %>%
+  select() # Add your code within select
+```
+
+
+Separate the data into test and train, call the new data (which has the imputed values) `train_data` and `test_data` to distinguish them from the raw data. Take the first 80% of rows as train and the last 20% of rows as test.
+< Answer in code Below >
+```{r}
+train_split = # Add your split percentage
+max_train_rows = round(train_split * nrow(all_data))
+starting_test_row = max_train_rows + 1
+train_data = all_data[1:max_train_rows,]
+test_data = all_data[starting_test_row:nrow(all_data),]
+```
+
+## What is wrong with the method above?
+<Answer here>
+
+## Build and train a model
+Build a logistic regression by using the `glm` function (the family parameter as `family = binomial(link = "logit")`). Show a `summary()` of your model.
+< Answer with code below >
+```{r}
+mod = glm() # Add your code within glm()
+summary(mod)
+```
+
+### Is there anything interesting in your model?
+< Answer Here >
+
+On your `train_data` -- `add_predictions()` requires a `type` parameter. Use `type = 'response'` and create predictions.
+<Answer with code below>
+```{r}
+train_data %>%
+  add_predictions() # Add your code within add_predictions()
+```
+
+How do you interpret the predictions from your model?
+<Answer Here>
+
+Create predictions for your `test_data` using the same method as above. Call your new tibble `results`
+```{r}
+results = test_data %>%
+  add_predictions() # Add your code within add_predictions()
+results
+```
+
+With your new test_data Set a cutoff point at `>= 0.6` for `Survived` to be `1` to replace `pred`
+```{r}
+results = results %>%
+  mutate() # Add your code within mutate (hint, if_else and factor will be important functions)
+```
+
+
+Use the library `caret` to create a confusion matrix `confusionMatrix()` and describe the output.
+```{r}
+confusionMatrix() # Add your code here
+```
+
+
+## Major issues
+
+We did not look at the balance of `Survived` (0 or 1). Why is this important?  
+
+< Answer Here >
+
+We built one model based off of the `titanic_train` data. Why should we have fit more?
+
+< Answer Here >
