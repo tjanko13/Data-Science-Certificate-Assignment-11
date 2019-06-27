@@ -24,10 +24,6 @@ all_data = titanic_train %>%
   mutate(Survived = factor(Survived)) # this is binary yes/no 0/1
 ```
 
-## Explain why we have training data separate from testing data:
-
-< Answer Here >
-
 
 ## Determine what's worth analyzing
 
