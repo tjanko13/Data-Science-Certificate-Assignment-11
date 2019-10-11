@@ -1,0 +1,136 @@
+---
+title: "in_class"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library('caret')
+library('tidyverse')
+library('rpart') # install.packages(c('rpart', 'rattle'))
+library('rattle')
+```
+
+# Assignment  
+
+Your crack squad was given a bad exercise by the head of the division, who has been fired for his incompetence. Your new leader has decided that logistic regression was not the right path. Please consider using a decision tree to do a similar exercise. You will be looking to classify the `country` -- which will be renamed as `Class` in your original data. 
+
+We are trying to predict more than a binomial output, what types of model could we use?
+
+
+## Data still from:
+Read about the data at <https://github.com/rfordatascience/tidytuesday/tree/master/data/2019/2019-06-04>
+
+```{r}
+ramen_ratings <- readr::read_csv("https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2019/2019-06-04/ramen_ratings.csv")
+
+
+top_countries = ramen_ratings %>% 
+  group_by(country) %>%
+  count() %>%
+  ungroup() %>% #This ungroup is important, why?
+  arrange(-n) %>%
+  top_n(10) %>%
+  select(-n) %>%
+  pull()
+
+top_brands = ramen_ratings %>% 
+  filter(country %in% top_countries) %>%
+  group_by(brand) %>%
+  count() %>%
+  ungroup() %>% #This ungroup is important, why?
+  arrange(-n) %>%
+  top_n(10) %>%
+  select(-n) %>%
+  pull()
+  
+dat = ramen_ratings %>%
+  select(-review_number, -variety) %>%
+  filter(country %in% top_countries) %>%
+  filter(brand %in% top_brands) %>%
+  drop_na() %>%
+  mutate(id = row_number()) %>%
+  mutate(Class = as.factor(country)) %>%
+  select(-country) %>%
+  mutate(brand = as.factor(brand),
+         style = as.factor(style))
+
+# Why must I do "Class" in this order??? When to set as a factor? When to user "other" etc.
+```
+
+# What is fct_reorder?
+```{r}
+dat %>%
+  group_by(Class) %>%
+  count() %>%
+  ggplot(aes(x = fct_reorder(Class, n), y = n)) + 
+  geom_col() + 
+  coord_flip()
+```
+
+
+```{r}
+set.seed(123)
+sample_volume = round(0.7 * nrow(dat))
+
+dat_train = dat %>%
+  sample_n(sample_volume)
+
+dat_test = dat %>%
+  anti_join(dat_train, by = 'id')
+
+dat_train = dat_train %>% select(-id)
+dat_test = dat_test %>% select(-id)
+```
+
+
+# What type of resampling should we use?
+```{r}
+dat_train_up <- upSample(x = dat_train[, -ncol(dat_train)],
+                         y = dat_train$Class)
+
+dat_train_up %>%
+  group_by(Class) %>%
+  count()
+```
+
+
+# Show errors by sampling small amount!
+```{r}
+train_control = trainControl(
+    method = "cv", number = 5
+  )
+
+model = train(
+  Class ~ ., 
+  data = dat_train_up,
+  method = "rpart",
+  trControl = train_control
+)
+
+model
+```
+
+
+```{r}
+plot(model)
+```
+
+
+```{r}
+fancyRpartPlot(model$finalModel)
+```
+
+
+# How does this work with test data?
+```{r}
+predictions = predict(model, newdata = dat_test, type = 'raw')
+actuals = dat_test$Class
+confusionMatrix(predictions, actuals)
+```
+
+
+```{r}
+
+```
+
