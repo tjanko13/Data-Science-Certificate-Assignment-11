@@ -1,122 +1,141 @@
 ---
-title: "Assignment 11"
-author: "Scott Stoltzman"
-date: "6/26/2019"
+title: "Assignment"
 output: html_document
 ---
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
-library('tidyverse')
 library('caret')
+library('tidyverse')
 library('rpart') # install.packages(c('rpart', 'rattle'))
 library('rattle')
-library('titanic')
 ```
 
+# Assignment  
 
-# The Titanic Data
+Your crack squad was given a bad exercise by the head of the division, who has been fired for his incompetence. Your new leader has decided that logistic regression was not the right path. Please consider using a decision tree to do a similar exercise. You will be looking to classify the `country` -- which will be renamed as `Class` in your original data. 
+
+We are trying to predict more than a binomial output, what types of model could we use?
+
+
+## Data still from:
+Read about the data at <https://github.com/rfordatascience/tidytuesday/tree/master/data/2019/2019-06-04>
 
 ```{r}
-# Load the data
-data("titanic_train") # training
-dat = titanic_train %>% 
-  as_tibble() %>%
-  mutate(Survived = factor(Survived)) # this is binary yes/no 0/1
+ramen_ratings <- readr::read_csv("https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2019/2019-06-04/ramen_ratings.csv")
+
+
+top_countries = ramen_ratings %>% 
+  group_by(country) %>%
+  count() %>%
+  ungroup() %>% #This ungroup is important, why?
+  arrange(-n) %>%
+  top_n(10) %>%
+  select(-n) %>%
+  pull()
+
+top_brands = ramen_ratings %>% 
+  filter(country %in% top_countries) %>%
+  group_by(brand) %>%
+  count() %>%
+  ungroup() %>% #This ungroup is important, why?
+  arrange(-n) %>%
+  top_n(10) %>%
+  select(-n) %>%
+  pull()
+  
+dat = ramen_ratings %>%
+  select(-review_number, -variety) %>%
+  filter(country %in% top_countries) %>%
+  filter(brand %in% top_brands) %>%
+  drop_na() %>%
+  mutate(id = row_number()) %>%
+  mutate(Class = as.factor(country)) %>%
+  select(-country) %>%
+  mutate(brand = as.factor(brand),
+         style = as.factor(style))
+
+# Why must I do "Class" in this order??? When to set as a factor? When to user "other" etc.
 ```
 
+# What is fct_reorder?
+```{r}
+dat %>%
+  group_by(Class) %>%
+  count() %>%
+  ggplot(aes(x = fct_reorder(Class, n), y = n)) + 
+  geom_col() + 
+  coord_flip()
+```
 
-## Determine what's worth analyzing
-
-We are going to try and predict `Survived`
 
 ```{r}
-head(dat)
+set.seed(123)
+sample_volume = round(0.7 * nrow(dat))
+
+dat_train = dat %>%
+  sample_n(sample_volume)
+
+dat_test = dat %>%
+  anti_join(dat_train, by = 'id')
+
+dat_train = dat_train %>% select(-id)
+dat_test = dat_test %>% select(-id)
 ```
 
+
+# What type of resampling should we use?
+```{r}
+dat_train_up <- upSample(x = dat_train[, -ncol(dat_train)],
+                         y = dat_train$Class)
+
+dat_train_up %>%
+  group_by(Class) %>%
+  count()
+```
+
+
+# Show errors by sampling small amount!
+```{r}
+train_control = trainControl(
+    method = "cv", number = 5
+  )
+
+model = train(
+  Class ~ ., 
+  data = dat_train_up,
+  method = "rpart",
+  trControl = train_control
+)
+
+model
+```
 
 
 ```{r}
-dat %>% summary()
+plot(model)
 ```
 
 
 ```{r}
-dat %>% glimpse()
+fancyRpartPlot(model$finalModel)
 ```
 
-## What is the difference between the following functions (conceptually)?
 
-`colSums(dat == '')`
-`colSums(is.na(dat))`
-
-< Answer Here >
+# How does this work with test data?
 ```{r}
-
-```
-
-
-## How should we handle missing values?
-Looking at `Embarked`
-```{r}
-dat %>% group_by(Embarked) %>% count()
-```
-
-## For learning purposes impute the following values:
-  - Missing `Embarked` values should be `S`
-  - Missing and `NA` values for `Age` should be replaced by the median `Age` 
-  - `NA` values for `Fare` should be replaced by the mean `Fare` 
-  - Why should we drop `PassengerId, Ticket, Name, Cabin` from our data?
-< Answer with code below >
-```{r}
-dat_clean = dat %>%
-  mutate() %>%
-  select() # Add your code
-dat_clean %>% summary()
-```
-
-## Prepare data to train a model
-
-Separate the data into test and train, call the new data (which has the imputed values) `dat_train` and `dat_test` to distinguish them from the raw data. Use an 80%/20% train/test split.
-
-< Answer in code Below >
-
-```{r}
-dat_train = ...
-dat_test = ...
+predictions = predict(model, newdata = dat_test, type = 'raw')
+actuals = dat_test$Class
+confusionMatrix(predictions, actuals)
 ```
 
 
 
-## Build and train a model
-Use the `caret` package and `rpart` to build a decision tree to predict survived. Do you need to rename to `Class`?
-< Answer with code below >
-```{r}
-train_control = trControl()
+#### Show results of what a different training set would look like  
 
-mod = train() # Add your code within glm()
-
-```
-
-### Is there anything interesting in your model?
-< Answer Here >
-
-Plot your model using the `fancyRpartPlot()` function. Describe what the splits mean.
+Explain your findings and why you find any of it interesting.
 
 ```{r}
 
 ```
 
-Use the `predict` function and then create a confusion matrix `confusionMatrix()` and describe the output.
-```{r}
-predictions = ...
-actuals = ...
-confusionMatrix() # Add your code here
-```
-
-
-## Major issues
-
-Did you resample your data? 
-
-< Answer Here >
