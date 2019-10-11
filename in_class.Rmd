@@ -95,6 +95,81 @@ dat_train_up %>%
 ```
 
 
+```{r}
+train_control = trainControl(
+    method = "cv", number = 5
+  )
+
+model = train(
+  Class ~ ., 
+  data = dat_train_up,
+  method = "rpart",
+  trControl = train_control
+)
+
+model
+```
+
+
+What is the `cp` parameter?
+
+
+```{r}
+plot(model)
+```
+
+
+```{r}
+fancyRpartPlot(model$finalModel)
+```
+
+
+# How does this work with test data?  
+
+What do the results indicate?
+```{r}
+predictions = predict(model, newdata = dat_test, type = 'raw')
+actuals = dat_test$Class
+confusionMatrix(predictions, actuals)
+```
+
+
+
+
+
+
+
+
+
+
+# What happens with too small of a sample?
+
+```{r}
+set.seed(123)
+sample_volume = round(0.05 * nrow(dat))
+
+dat_train = dat %>%
+  sample_n(sample_volume)
+
+dat_test = dat %>%
+  anti_join(dat_train, by = 'id')
+
+dat_train = dat_train %>% select(-id)
+dat_test = dat_test %>% select(-id)
+```
+
+
+# What type of resampling should we use?
+```{r}
+dat_train_up <- upSample(x = dat_train[, -ncol(dat_train)],
+                         y = dat_train$Class)
+
+dat_train_up %>%
+  group_by(Class) %>%
+  count()
+```
+
+
 # Show errors by sampling small amount!
 ```{r}
 train_control = trainControl(
@@ -112,25 +187,10 @@ model
 ```
 
 
-```{r}
-plot(model)
-```
 
 
-```{r}
-fancyRpartPlot(model$finalModel)
-```
 
 
-# How does this work with test data?
-```{r}
-predictions = predict(model, newdata = dat_test, type = 'raw')
-actuals = dat_test$Class
-confusionMatrix(predictions, actuals)
-```
 
 
-```{r}
-
-```
 
