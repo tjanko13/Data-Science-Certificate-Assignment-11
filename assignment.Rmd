@@ -25,7 +25,7 @@ Read about the data at <https://github.com/rfordatascience/tidytuesday/tree/mast
 ramen_ratings <- readr::read_csv("https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2019/2019-06-04/ramen_ratings.csv")
 
 
-top_countries = ramen_ratings %>% 
+top_countries <- ramen_ratings %>% 
   group_by(country) %>%
   count() %>%
   ungroup() %>% #This ungroup is important, why?
@@ -34,7 +34,7 @@ top_countries = ramen_ratings %>%
   select(-n) %>%
   pull()
 
-top_brands = ramen_ratings %>% 
+top_brands <- ramen_ratings %>% 
   filter(country %in% top_countries) %>%
   group_by(brand) %>%
   count() %>%
@@ -44,7 +44,7 @@ top_brands = ramen_ratings %>%
   select(-n) %>%
   pull()
   
-dat = ramen_ratings %>%
+dat <- ramen_ratings %>%
   select(-review_number, -variety) %>%
   filter(country %in% top_countries) %>%
   filter(brand %in% top_brands) %>%
@@ -59,6 +59,7 @@ dat = ramen_ratings %>%
 ```
 
 # What is fct_reorder?
+# It reorders a factor based on the specified order. 
 ```{r}
 dat %>%
   group_by(Class) %>%
@@ -71,16 +72,16 @@ dat %>%
 
 ```{r}
 set.seed(123)
-sample_volume = round(0.7 * nrow(dat))
+sample_volume <- round(0.7 * nrow(dat))
 
-dat_train = dat %>%
+dat_train <- dat %>%
   sample_n(sample_volume)
 
-dat_test = dat %>%
+dat_test <- dat %>%
   anti_join(dat_train, by = 'id')
 
-dat_train = dat_train %>% select(-id)
-dat_test = dat_test %>% select(-id)
+dat_train <- dat_train %>% select(-id)
+dat_test <- dat_test %>% select(-id)
 ```
 
 
@@ -97,16 +98,9 @@ dat_train_up %>%
 
 # Show errors by sampling small amount!
 ```{r}
-train_control = trainControl(
-    method = "cv", number = 5
-  )
+train_control <- trainControl(method = "cv", number = 5)
 
-model = train(
-  Class ~ ., 
-  data = dat_train_up,
-  method = "rpart",
-  trControl = train_control
-)
+model = train(Class ~ ., data = dat_train_up, method = "rpart", trControl = train_control)
 
 model
 ```
@@ -124,8 +118,8 @@ fancyRpartPlot(model$finalModel)
 
 # How does this work with test data?
 ```{r}
-predictions = predict(model, newdata = dat_test, type = 'raw')
-actuals = dat_test$Class
+predictions <- predict(model, newdata = dat_test, type = 'raw')
+actuals <- dat_test$Class
 confusionMatrix(predictions, actuals)
 ```
 
@@ -134,6 +128,74 @@ confusionMatrix(predictions, actuals)
 #### Show results of what a different training set would look like  
 
 Explain your findings and why you find any of it interesting.
+```{r}
+set.seed(987456)
+sample_volume <- round(0.5 * nrow(dat))
+
+dat_train <- dat %>%
+  sample_n(sample_volume)
+
+dat_test <- dat %>%
+  anti_join(dat_train, by = 'id')
+
+dat_train <- dat_train %>% select(-id)
+dat_test <- dat_test %>% select(-id)
+```
+
+# UpSampling 
+```{r}
+dat_train_up <- upSample(x = dat_train[, -ncol(dat_train)],
+                         y = dat_train$Class)
+
+dat_train_up %>%
+  group_by(Class) %>%
+  count()
+# Alternate way of showing the data
+#table(dat_train_up$Class)
+```
+
+# DownSampling 
+```{r}
+dat_train_down <- downSample(x = dat_train[, -ncol(dat_train)],
+                         y = dat_train$Class)
+
+dat_train_down %>%
+  group_by(Class) %>%
+  count()
+
+# Alternate way of showing the data
+#table(dat_train_down$Class)
+```
+
+# Look at Hybrid - SMOTE 
+```{r}
+# Requires a data.frame, not tibble
+train_data_df <- as.data.frame(dat_train)
+smote_train <- DMwR::SMOTE(Class ~ ., data = train_data_df)
+table(smote_train$Class)
+```
+
+# Look at Hybrid - ROSE 
+```{r}
+rose_train <- ROSE::ROSE(Class ~ ., data = dat_train)$data
+table(rose_train$Class) 
+```
+
+```{r}
+train_control <- trainControl(method = "cv", number = 5)
+model <- train(Class ~ ., data = dat_train_up, method = "rpart", trControl = train_control)
+model
+```
+
+```{r}
+fancyRpartPlot(model$finalModel)
+```
+
+```{r}
+predictions <- predict(model, newdata = dat_test, type = 'raw')
+actuals <- dat_test$Class
+confusionMatrix(predictions, actuals)
+```
 
 ```{r}
 
